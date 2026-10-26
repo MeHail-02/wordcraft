@@ -238,6 +238,8 @@ pub enum Dialog {
         /// Go To's box: a page number (`+2`, `-1` move from the current page) or a bookmark.
         goto_target: String,
         message: String,
+        /// Replace All's result, in a message box over the dialog until OK, as in Word (#4414).
+        notice: Option<String>,
         /// Put the caret in Find what on the first frame, so typing searches (#772).
         focus: bool,
     },
@@ -1319,6 +1321,7 @@ impl Dialog {
                 goto_what: GoToWhat::Page,
                 goto_target: String::new(),
                 message: String::new(),
+                notice: None,
                 focus: true,
             },
             "insertTable" => Dialog::InsertTable { rows: 2, cols: 5 },
@@ -1669,6 +1672,12 @@ pub fn show(app: &mut WordApp, ctx: &egui::Context) {
         ui.set_min_width(340.0);
         close = body(app, ui, &mut d);
     });
+    // Replace All's result, above the dialog (drawn after it, so the dialog saw its keys as taken).
+    if let Dialog::Find { notice: notice @ Some(_), .. } = &mut d
+        && replace_all_notice(ctx, notice.as_deref().unwrap_or_default())
+    {
+        *notice = None;
+    }
     if let Some(shown) = &shown {
         if let Dialog::SaveChanges { name, message, .. } = &d {
             let question = crate::i18n::fmt(tl!("Do you want to save changes to {name}?"), &[("name", name)]);
@@ -1820,6 +1829,23 @@ fn page_paper_group(ui: &mut Ui, paper: &mut (f32, f32), landscape: &mut bool, c
 /// Cancel key for dialogs: Escape everywhere, plus ⌘. (Command+Period) on macOS.
 pub(crate) fn cancel_key_pressed(ui: &Ui) -> bool {
     ui.input(|i| i.key_pressed(egui::Key::Escape) || (cfg!(target_os = "macos") && i.modifiers.command && i.key_pressed(egui::Key::Period)))
+}
+
+/// Replace All's result in a message box centred over the Find and Replace dialog, as in Word
+/// (#4414). True once OK, Enter or Escape dismisses it.
+fn replace_all_notice(ctx: &egui::Context, text: &str) -> bool {
+    let resp = egui::Modal::new(egui::Id::unique("wordcraft.replaceAllNotice")).show(ctx, |ui| {
+        ui.set_max_width(320.0);
+        ui.label(text);
+        ui.add_space(10.0);
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            let ok = ui.add(crate::widgets::primary_button(ui, tl!("OK")));
+            ok.request_focus();
+            ok.clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter))
+        })
+        .inner
+    });
+    resp.inner || resp.should_close()
 }
 
 /// Lays out an OK and a Cancel button right-to-left, in the platform's order:
@@ -2216,7 +2242,7 @@ fn body(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
         }
         Dialog::Tabs { form } => crate::dialogs_para::tabs(app, ui, form),
         Dialog::Borders { form } => crate::dialogs_para::borders(app, ui, form),
-        Dialog::Find { query, replace, match_case, whole_word, regex, extra, tab, goto_what, goto_target, message, focus } => {
+        Dialog::Find { query, replace, match_case, whole_word, regex, extra, tab, goto_what, goto_target, message, notice, focus } => {
             const FIND_TABS: [(FindTab, &str); 3] = [(FindTab::Find, "Find"), (FindTab::Replace, "Replace"), (FindTab::GoTo, "Go To")];
             let names = FIND_TABS.map(|(_, l)| tl!(l).to_string());
             let current = FIND_TABS.iter().position(|(t, _)| t == tab).unwrap_or(0);
@@ -2305,12 +2331,18 @@ fn body(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
             if !message.is_empty() {
                 ui.label(egui::RichText::new(message.as_str()).weak());
             }
+            // Enter and Escape belong to the message box while it is open above the dialog.
+            let keys = notice.is_none();
             let mut close = false;
             ui.horizontal(|ui| {
                 if replace_mode {
                     if ui.button(tl!("Replace All")).clicked() {
                         match app.run("edit.replaceAll", opts.clone()) {
-                            Ok(r) => *message = format!("All done. We made {} replacements.", r["replaced"]),
+                            Ok(r) => {
+                                message.clear();
+                                let count = r["replaced"].as_u64().unwrap_or(0).to_string();
+                                *notice = Some(crate::i18n::fmt(tl!("All done. We made {count} replacements."), &[("count", &count)]));
+                            }
                             Err(e) => *message = e,
                         }
                     }
@@ -2318,14 +2350,18 @@ fn body(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
                         let _ = app.run("edit.replace", opts.clone());
                     }
                 }
-                if ui.button(tl!("Find Next")).clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                if ui.button(tl!("Find Next")).clicked() || (keys && ui.input(|i| i.key_pressed(egui::Key::Enter))) {
                     // One step per click: `edit.find` would select a match itself, and the step after it skip one.
                     match app.run("edit.findNext", opts.clone()) {
-                        Ok(r) => *message = format!("Match {} of {}", r["index"].as_u64().unwrap_or(0) + 1, r["count"]),
+                        Ok(r) => {
+                            let n = (r["index"].as_u64().unwrap_or(0) + 1).to_string();
+                            let total = r["count"].as_u64().unwrap_or(0).to_string();
+                            *message = crate::i18n::fmt(tl!("Match {n} of {total}"), &[("n", &n), ("total", &total)]);
+                        }
                         Err(e) => *message = e,
                     }
                 }
-                if ui.button(tl!("Close")).clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                if ui.button(tl!("Close")).clicked() || (keys && ui.input(|i| i.key_pressed(egui::Key::Escape))) {
                     close = true;
                 }
             });
@@ -5282,6 +5318,44 @@ mod tests {
             h.get_by_label("Replace All").click();
             h.run_steps(2);
             assert_eq!(h.state().session.doc.plain_text(wordcraft_doc::StoryRef::Body), want, "{with}");
+        }
+    }
+
+    /// #4414: Replace All reports its count in a message box over the dialog, as in Word, not as
+    /// faint text in it. OK, Enter or Escape closes the box only: the dialog stays open, and the key
+    /// doesn't also run Find Next or Close.
+    #[test]
+    fn replace_all_reports_in_a_message_box() {
+        use egui_kittest::kittest::Queryable;
+        // The count is wrapped in bidi isolate marks (`i18n::fmt`), so the label is matched in part.
+        let done = |h: &egui_kittest::Harness<'static, WordApp>| h.query_by_label_contains("All done. We made").is_some();
+        for dismiss in ["ok", "enter", "escape"] {
+            let mut h = app_harness(app_with("cat and cat"));
+            h.state_mut().run("ui.dialog", json!({"name": "replace"})).unwrap();
+            h.run_steps(2);
+            if let Some(Dialog::Find { query, replace, .. }) = h.state_mut().dialog.as_mut() {
+                *query = "cat".into();
+                *replace = "dog".into();
+            } else {
+                panic!("Replace opens the Find and Replace dialog");
+            }
+            h.run_steps(2);
+            h.get_by_label("Replace All").click();
+            h.run_steps(2);
+            assert_eq!(h.state().session.doc.plain_text(wordcraft_doc::StoryRef::Body), "dog and dog");
+            assert!(done(&h), "{dismiss}: the count is shown in a message box");
+            let Some(Dialog::Find { notice: Some(text), .. }) = &h.state().dialog else { panic!("{dismiss}: no notice") };
+            assert!(text.contains('2') && !text.contains("{count}"), "{dismiss}: {text:?}");
+            let caret = h.state().session.sel.clone();
+            match dismiss {
+                "ok" => h.get_by_label("OK").click(),
+                "enter" => h.key_press(egui::Key::Enter),
+                _ => h.key_press(egui::Key::Escape),
+            }
+            h.run_steps(2);
+            assert!(!done(&h), "{dismiss} closes the message box");
+            assert!(matches!(&h.state().dialog, Some(Dialog::Find { notice: None, .. })), "{dismiss} leaves the dialog open");
+            assert_eq!(h.state().session.sel, caret, "{dismiss} doesn't also run Find Next");
         }
     }
 
