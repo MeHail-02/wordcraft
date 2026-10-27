@@ -912,7 +912,7 @@ fn replace_all_with_regex_groups_from_the_dialog() {
 #[test]
 fn replace_all_reports_in_a_message_box() {
     use egui_kittest::kittest::Queryable;
-    // The count is wrapped in bidi isolate marks (`i18n::fmt`), so the label is matched in part.
+    // Found by its wording; the count itself is checked on the notice below.
     let done = |h: &egui_kittest::Harness<'static, WordApp>| h.query_by_label_contains("All done. We made").is_some();
     for dismiss in ["ok", "enter", "escape"] {
         let mut h = app_harness(app_with("cat and cat"));
