@@ -948,6 +948,25 @@ fn find_and_replace_fields_have_an_edit_menu() {
     menu(&mut h, "Find what:", "Paste");
     menu(&mut h, "Replace with:", "Paste");
     assert_eq!(fields(&h), ("glow".to_string(), "glow".to_string()), "Paste puts the clipboard's text in the field");
+    // With no selection, a right-click moves the caret to the click, as on the page: Paste
+    // goes there, not where the caret was (the end of the text).
+    let field = h.get_by_label("Replace with:").rect();
+    let start = egui::pos2(field.left() + 1.0, field.center().y);
+    let button =
+        |pressed| egui::Event::PointerButton { pos: start, button: egui::PointerButton::Secondary, pressed, modifiers: egui::Modifiers::NONE };
+    h.event(egui::Event::PointerMoved(start));
+    h.step();
+    h.event(button(true));
+    h.step();
+    h.event(button(false));
+    h.run_steps(2);
+    h.query_all_by_label("Paste").find(|n| n.rect().top() >= start.y).expect("Paste is in the menu").click();
+    h.run_steps(3);
+    assert_eq!(fields(&h).1, "glowglow");
+    // Typing shows where the caret is: after the text pasted at the start, not at the end.
+    h.event(egui::Event::Text("!".into()));
+    h.run_steps(2);
+    assert_eq!(fields(&h).1, "glow!glow", "pasted where the right-click put the caret");
     assert_eq!(h.state().session.doc.plain_text(wordcraft_doc::StoryRef::Body), "Lanterns", "the document is untouched");
 }
 
