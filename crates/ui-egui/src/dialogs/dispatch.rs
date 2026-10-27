@@ -301,9 +301,11 @@ pub(super) fn body(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
                 return goto_body(app, ui, goto_what, goto_target, message);
             }
             let replace_mode = *tab == FindTab::Replace;
+            let clipboard = app.services.clipboard_text.as_deref();
             ui.horizontal(|ui| {
                 let find_label = ui.label(tl!("Find what:"));
-                let r = ui.add(egui::TextEdit::singleline(query).id(egui::Id::unique("find_what")).desired_width(240.0)).labelled_by(find_label.id);
+                let edit = egui::TextEdit::singleline(query).desired_width(240.0);
+                let r = crate::field_menu::text_field(ui, edit, egui::Id::unique("find_what"), clipboard).labelled_by(find_label.id);
                 if std::mem::take(focus) {
                     r.request_focus();
                 }
@@ -314,7 +316,11 @@ pub(super) fn body(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
             if replace_mode {
                 ui.horizontal(|ui| {
                     let replace_label = ui.label(tl!("Replace with:"));
-                    if ui.add(egui::TextEdit::singleline(replace).desired_width(228.0)).labelled_by(replace_label.id).gained_focus() {
+                    let edit = egui::TextEdit::singleline(replace).desired_width(228.0);
+                    if crate::field_menu::text_field(ui, edit, egui::Id::unique("replace_with"), clipboard)
+                        .labelled_by(replace_label.id)
+                        .gained_focus()
+                    {
                         extra.to_replace = true;
                     }
                 });
