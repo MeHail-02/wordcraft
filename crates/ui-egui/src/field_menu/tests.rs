@@ -1,4 +1,4 @@
-use super::*;
+use super::{Event, Id, TextEdit, Ui, pending_id, text_field};
 
 /// #4404 review: a menu pick reaches the field only on the frame after it. One the field wasn't
 /// drawn for then (its tab left in between) is dropped, not replayed when the field comes back.
