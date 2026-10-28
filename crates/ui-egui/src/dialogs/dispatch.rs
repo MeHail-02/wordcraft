@@ -364,10 +364,12 @@ fn find_dialog(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
     }
     let replace_mode = *tab == FindTab::Replace;
     let clipboard = app.services.clipboard_text.as_deref();
+    // Per window: two windows on a document can each have the dialog open.
+    let (find_what, replace_with) = (app.window_id("find_what"), app.window_id("replace_with"));
     ui.horizontal(|ui| {
         let find_label = ui.label(tl!("Find what:"));
         let edit = egui::TextEdit::singleline(query).desired_width(240.0);
-        let r = crate::field_menu::text_field(ui, edit, egui::Id::unique("find_what"), clipboard).labelled_by(find_label.id);
+        let r = crate::field_menu::text_field(ui, edit, find_what, clipboard).labelled_by(find_label.id);
         if std::mem::take(focus) {
             r.request_focus();
         }
@@ -379,7 +381,7 @@ fn find_dialog(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
         ui.horizontal(|ui| {
             let replace_label = ui.label(tl!("Replace with:"));
             let edit = egui::TextEdit::singleline(replace).desired_width(228.0);
-            if crate::field_menu::text_field(ui, edit, egui::Id::unique("replace_with"), clipboard).labelled_by(replace_label.id).gained_focus() {
+            if crate::field_menu::text_field(ui, edit, replace_with, clipboard).labelled_by(replace_label.id).gained_focus() {
                 extra.to_replace = true;
             }
         });
