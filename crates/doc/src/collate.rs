@@ -5,8 +5,8 @@
 //! with `e` (`resume` < `résumé` < `rex`) unless the language makes it a letter of its own:
 //! Polish puts `ą` right after `a` and `ż` after `ź` after `z`, Swedish puts `å ä ö` after `z`,
 //! Czech puts `ch` after `h`, Spanish `ñ` after `n`, Hungarian `cs`, `gy`, `sz`… after their
-//! first letter, Vietnamese `ă â` after `a`, `đ` after `d`, `ô ơ` after `o`, with the tones as
-//! accents. The per-language tables follow the published alphabets of those languages.
+//! first letter, Vietnamese `ă â` after `a`, `đ` after `d`, `ô ơ` after `o`, `ch kh ng nh…` after
+//! their first letter, with the tones as accents. The per-language tables follow the published alphabets of those languages.
 //! Text without diacritics sorts exactly as a case-insensitive code-point compare.
 
 use std::cmp::Ordering;
@@ -172,7 +172,20 @@ const IS: &[Tailor] = &[
     t("æ", 'z', 2),
     t("ö", 'z', 3),
 ];
-const VI: &[Tailor] = &[t("đ", 'd', 1)];
+// Vietnamese digraphs are letters of their own after their first letter, as Word sorts them
+// (`ca co cu chi`, `ta tu tha tra`, `na no nga nha`, `ga gha gu gi`); CLDR `vi` sorts them letter by
+// letter.
+const VI: &[Tailor] = &[
+    t("ch", 'c', 1),
+    t("đ", 'd', 1),
+    t("gi", 'g', 1),
+    t("kh", 'k', 1),
+    t("ng", 'n', 1),
+    t("nh", 'n', 2),
+    t("ph", 'p', 1),
+    t("th", 't', 1),
+    t("tr", 't', 2),
+];
 
 /// Vietnamese vowels (CLDR `vi`): the Latin letter each one sorts after, its rank there, and the
 /// letter followed by its toned forms in dictionary order of the tones: grave (huyền), hook above
@@ -631,7 +644,7 @@ mod tests {
     #[test]
     fn vietnamese_alphabet_and_tones() {
         // #4317: Vietnamese letters sorted after `z`.
-        assert_eq!(sorted(&["An", "Dung", "Khoa", "Kim", "Ăn", "Đang", "Ẩn"], "vi-VN"), ["An", "Ăn", "Ẩn", "Dung", "Đang", "Khoa", "Kim"]);
+        assert_eq!(sorted(&["An", "Dung", "Khoa", "Kim", "Ăn", "Đang", "Ẩn"], "vi-VN"), ["An", "Ăn", "Ẩn", "Dung", "Đang", "Kim", "Khoa"]);
         let alphabet = [
             "a", "ă", "â", "b", "c", "d", "đ", "e", "ê", "g", "h", "i", "k", "l", "m", "n", "o", "ô", "ơ", "p", "q", "r", "s", "t", "u", "ư", "v",
             "x", "y",
@@ -645,6 +658,21 @@ mod tests {
         assert_eq!(sorted(&["ba", "ấm", "âm", "ăn", "an"], "vi"), ["an", "ăn", "âm", "ấm", "ba"]);
         assert_eq!(sorted(&["ước", "ung", "ở", "ôm", "ổn", "ong"], "vi"), ["ong", "ôm", "ổn", "ở", "ung", "ước"]);
         assert_eq!(collate("ĐẶNG", "đặng", Some("vi")), Ordering::Equal);
+    }
+
+    #[test]
+    fn vietnamese_digraphs_follow_their_first_letter_as_in_word() {
+        // Word's Vietnamese sort, observed in review of #4483; `gh` is not a letter of its own.
+        assert_eq!(sorted(&["chi", "cu", "co", "ca"], "vi"), ["ca", "co", "cu", "chi"]);
+        assert_eq!(sorted(&["kha", "ko", "ki", "ka"], "vi"), ["ka", "ki", "ko", "kha"]);
+        assert_eq!(sorted(&["pha", "po", "pi", "pa"], "vi"), ["pa", "pi", "po", "pha"]);
+        assert_eq!(sorted(&["tra", "tha", "tu", "to", "ta"], "vi"), ["ta", "to", "tu", "tha", "tra"]);
+        assert_eq!(sorted(&["nha", "nga", "no", "ni", "na"], "vi"), ["na", "ni", "no", "nga", "nha"]);
+        assert_eq!(sorted(&["gi", "gu", "go", "gha", "ga"], "vi"), ["ga", "gha", "go", "gu", "gi"]);
+        assert_eq!(heading_letter("Khoa", Some("vi")).as_deref(), Some("Kh"));
+        assert_eq!(heading_letter("nghĩa", Some("vi")).as_deref(), Some("Ng"));
+        // Other languages keep letter-by-letter order.
+        assert_eq!(sorted(&["Kim", "Khoa"], "en"), ["Khoa", "Kim"]);
     }
 
     #[test]
