@@ -174,11 +174,17 @@ const IS: &[Tailor] = &[
 ];
 // Vietnamese digraphs are letters of their own after their first letter, as Word sorts them
 // (`ca co cu chi`, `ta tu tha tra`, `na no nga nha`, `ga gha gu gi`); CLDR `vi` sorts them letter by
-// letter.
+// letter. A tone on the `i` of `gi` stays a tone of that letter (`gì` files under `gi`), in
+// `VI_VOWELS` order.
 const VI: &[Tailor] = &[
     t("ch", 'c', 1),
     t("đ", 'd', 1),
     t("gi", 'g', 1),
+    ts("gì", 'g', 1, 1),
+    ts("gỉ", 'g', 1, 2),
+    ts("gĩ", 'g', 1, 3),
+    ts("gí", 'g', 1, 4),
+    ts("gị", 'g', 1, 5),
     t("kh", 'k', 1),
     t("ng", 'n', 1),
     t("nh", 'n', 2),
@@ -469,7 +475,14 @@ struct Elem<'a> {
 /// Vietnamese vowels as Vietnamese does.
 fn next_elem<'a>(rest: &'a str, rules: &[Tailor], vi: bool) -> Option<(Elem<'a>, usize)> {
     if let Some(r) = rules.iter().filter(|r| rest.starts_with(r.seq)).max_by_key(|r| r.seq.len()) {
-        let text = rest.get(..r.seq.len())?;
+        let mut text = rest.get(..r.seq.len())?;
+        // A toned Vietnamese letter shows without its tone: `gì` files under `Gi`.
+        if vi
+            && r.sec > 0
+            && let Some(base) = rules.iter().find(|b| b.after == r.after && b.rank == r.rank && b.sec == 0)
+        {
+            text = base.seq;
+        }
         return Some((Elem { primary: vec![weight(r.after, r.rank)], sec: r.sec, text, own: true }, r.seq.len()));
     }
     let c = rest.chars().next()?;
@@ -671,6 +684,11 @@ mod tests {
         assert_eq!(sorted(&["gi", "gu", "go", "gha", "ga"], "vi"), ["ga", "gha", "go", "gu", "gi"]);
         assert_eq!(heading_letter("Khoa", Some("vi")).as_deref(), Some("Kh"));
         assert_eq!(heading_letter("nghĩa", Some("vi")).as_deref(), Some("Ng"));
+        // A tone on the `i` of `gi` is a tone of the letter `gi` (review of #4483).
+        assert_eq!(sorted(&["gia", "gí", "gu", "gì", "gi", "ga"], "vi"), ["ga", "gu", "gi", "gì", "gí", "gia"]);
+        assert_eq!(heading_letter("gì", Some("vi")).as_deref(), Some("Gi"));
+        assert_eq!(heading_letter("Gị", Some("vi")).as_deref(), Some("Gi"));
+        assert_eq!(collate("gi\u{300}", "gì", Some("vi")), Ordering::Equal);
         // Other languages keep letter-by-letter order.
         assert_eq!(sorted(&["Kim", "Khoa"], "en"), ["Khoa", "Kim"]);
     }

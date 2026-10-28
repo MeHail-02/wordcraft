@@ -179,7 +179,9 @@ Russian (`ru`) sorting keeps ё with е (a secondary diaeresis difference), befo
 Vietnamese (`vi`) sorting follows its alphabet, `a ă â b c d đ e ê g h i k l m n o ô ơ p q r s t u ư v x y`
 (#4317): `Ăn` and `Ẩn` follow `An`, `Đang` follows `Dung`. As in Word's Vietnamese sort, the
 digraphs `ch gi kh ng nh ph th tr` are letters of their own after their first letter (`ta to tu tha
-tra`, `na no nga nha`, `Kim` before `Khoa`, index heading `Kh`); `gh` is not (`ga gha go`). CLDR's
+tra`, `na no nga nha`, `Kim` before `Khoa`, index heading `Kh`); `gh` is not (`ga gha go`). A tone
+on the `i` of `gi` is a tone of that letter: `gi < gì < gí < gia`, heading `Gi`, as dictionaries file
+`gì`. CLDR's
 `vi` chart sorts the digraphs letter by letter; WordCraft follows Word. Tones are accents, compared only after
 the letters, in dictionary order: none, grave (huyền), hook above (hỏi), tilde (ngã), acute (sắc),
 dot below (nặng), so `ma < mà < mả < mã < má < mạ < mai`. Index headings drop the tone (`ấm` files
@@ -235,7 +237,7 @@ WordCraft keeps 2,54 cm).
 
 | Date | Change | Summary |
 |---|---|---|
-| 2026-10-28 | trivial | Vietnamese sorting: the digraphs `ch gi kh ng nh ph th tr` are letters after their first letter, matching Word's Vietnamese sort (observed in review of #4483) |
+| 2026-10-28 | trivial | Vietnamese sorting: the digraphs `ch gi kh ng nh ph th tr` are letters after their first letter, matching Word's Vietnamese sort (observed in review of #4483); `gì gỉ gĩ gí gị` are `gi` with a tone |
 | 2026-10-26 | minor | Vietnamese sorting (#4317): `ă â đ ê ô ơ ư` are letters of their own, tones compare in dictionary order after the letters, index headings drop the tone, decomposed text sorts like composed; other languages file Vietnamese vowels with their Latin letter instead of after `z` |
 | 2026-10-24 | minor | Preserved “Delete Around Caret in Equation” in all 27 shared WordCraft catalogs; the native/release pin and Flatpak source advance together. |
 | 2026-10-23 | minor | Interface catalogs moved to storytold/craft-i18n (`locales/<locale>/wordcraft.tsv`), looked up through craft-libs' `craft-i18n` crate and embedded from the pinned commit (`craft-i18n.rev`); strings other Crafting Apps already translate in the shared catalog now show translated; the "Open" paragraph-spacing preset no longer shows the file verb |
