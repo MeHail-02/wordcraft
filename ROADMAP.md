@@ -1,6 +1,6 @@
 # WordCraft roadmap
 
-> **Highlight update:** 2026-10-25 · Highlight shortcut toggles the last chosen colour off when the whole selection has it; explicit colour commands remain setters (#4085). Readiness estimates unchanged.
+> **AutoCorrect update:** 2026-10-28 · TWo INitial CApitals fixes a word only when the spelling check of its language or the replacement list knows the fixed word, as in Word, so `DMs` stays as typed (#4248); previously, 2026-10-25: Highlight shortcut toggles the last chosen colour off when the whole selection has it; explicit colour commands remain setters (#4085). Readiness estimates unchanged.
 
 **Stage: alpha** · next: beta, ~15 points (60% → 75% ready for real work) and ~150–230 h away
 

@@ -172,8 +172,8 @@ ideographic space (`autocorrect_finds_the_word_after_a_wide_space`):
   the word's language accepts or the replacement list has (`TEh`→`Teh`→`The`): `DMs`, `MBps`,
   `PDfs` and `HEllox` stay as typed, and a language without a dictionary fixes every word (#4248,
   checked in Word for Windows, `two_initial_capitals_are_kept_unless_the_fixed_word_is_spelled_right`).
-  Word also fixes `ABc` and `QWerty`; WordCraft's English word list lacks `abc` and `qwerty`, so
-  those stay as typed.
+  The language is the first letter's, not an opening quote's; an entry may include the quotes or
+  brackets (`(Wcraft)`).
 - Reversing an automatic capital makes an exception (Word's "Automatically add words to list",
   observed on the Mac, #1857): Undo of the sentence capital's own step adds the word before it
   to the First Letter list (`there.`; only words ending in a full stop, the one form seen in

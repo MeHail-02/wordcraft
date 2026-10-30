@@ -1684,8 +1684,8 @@ fn two_initial_capitals_are_corrected() {
 fn two_initial_capitals_are_kept_unless_the_fixed_word_is_spelled_right() {
     let s = typed("x DMs ZXs QWs DMss MBps HEllox WOrdz XQr JKlmn PDfs BRb ");
     assert_eq!(s.doc.plain_text(StoryRef::Body), "X DMs ZXs QWs DMss MBps HEllox WOrdz XQr JKlmn PDfs BRb ");
-    let s = typed("x THe HEllo THeir BLah WIndows MIcrosoft TWo ");
-    assert_eq!(s.doc.plain_text(StoryRef::Body), "X The Hello Their Blah Windows Microsoft Two ");
+    let s = typed("x THe HEllo THeir BLah WIndows MIcrosoft TWo ABc QWerty ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "X The Hello Their Blah Windows Microsoft Two Abc Qwerty ");
     // A replacement's typo is still fixed through the replacement list.
     assert_eq!(typed("x TEh ADn ").doc.plain_text(StoryRef::Body), "X The And ");
     // The user's own entries count too, while Replace text as you type is on.
@@ -1696,6 +1696,18 @@ fn two_initial_capitals_are_kept_unless_the_fixed_word_is_spelled_right() {
     run(&mut s, "tools.autocorrect", json!({"replaceText": false}));
     typ(&mut s, "WCraft WOrd ");
     assert_eq!(s.doc.plain_text(StoryRef::Body), "X WordCraft WCraft Word ");
+    // An entry with the brackets around the word.
+    let mut s = typed("");
+    run(&mut s, "tools.autocorrect", json!({"add": {"from": "(Wcraft)", "to": "WordCraft"}}));
+    typ(&mut s, "x (WCraft) ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "X WordCraft ");
+    // The word's own language counts, not an opening bracket's: German (no dictionary) fixes it.
+    let mut s = typed("x (DMs");
+    run(&mut s, "select.text", json!({"text": "DMs"}));
+    run(&mut s, "review.language", json!({"lang": "de-DE"}));
+    run(&mut s, "caret.docEnd", json!({}));
+    typ(&mut s, " ");
+    assert_eq!(s.doc.plain_text(StoryRef::Body), "X (Dms ");
     // A language without a dictionary fixes every word, as before.
     let mut s = self::s();
     run(&mut s, "review.language", json!({"lang": "de-DE", "default": true}));
